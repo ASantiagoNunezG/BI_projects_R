@@ -1,0 +1,73 @@
+---
+title: "ejemplo_titanic"
+author: "Nunez"
+date: "2025-06-16"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Metodología SEMMA
+## Dataset Titanic
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+```{r message=FALSE, warning=FALSE, rows.print=20}
+base_datos <- read.csv("titanic.csv")
+head(base_datos,10)
+base_datos
+```
+## Eploración inicial
+### Contando los datos
+```{r message=FALSE, warning=FALSE}
+nrow(base_datos)
+ncol(base_datos)
+count(base_datos, Sex)
+count(base_datos, Survived)
+```
+### Explorando los datos
+```{r message=FALSE, warning=FALSE}
+summary(base_datos)
+glimpse(base_datos)
+str(base_datos)
+```
+### Valores nulos
+```{r message=FALSE, warning=FALSE}
+library(Amelia)
+is.na(base_datos)
+sum(is.na(base_datos))
+colSums(is.na(base_datos))
+missmap(base_datos,col=c("red","green"))
+```
+```{r message=FALSE, warning=FALSE}
+base_datos$Age[is.na(base_datos$Age)] <- mean(base_datos$Age, na.rm = TRUE)
+missmap ( base_datos , col =  c ( "red" ,  "green" ) )
+```
+### Selección de columnas
+```{r message=FALSE, warning=FALSE}
+datos_titanic <- base_datos %>%
+select(Survived, Pclass, Sex, Age, SibSp, Parch, Fare)
+head(datos_titanic,5)
+```
+
+## Separar la muestra
+### Muestreo Aleatorio
+```{r message=FALSE, warning=FALSE}
+set.seed(123)
+muestra_titanic <- sample_frac(datos_titanic, 0.3)
+nrow(muestra_titanic)
+```
+### Muestreo Estratificado
+```{r message=FALSE, warning=FALSE}
+muestra_estratificada <- datos_titanic %>%
+group_by(Survived) %>%
+sample_frac(0.3)
+nrow(muestra_estratificada)
+```

@@ -1,0 +1,99 @@
+---
+title: "Laboratorio14"
+author: "Nunez"
+date: "2025-06-22"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smoth_scroll: true
+    theme: cerulean
+    highlight: zenburn
+    df_print: paged
+    code_folding: show
+---
+
+# Metodología SEMMA
+## Primera Fase| Sample o Muestra
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+base_datos <- read_csv("InsuranceCompany.csv")
+```
+## Segunda Fase | Explore o Explorar
+```{r message=FALSE, warning=FALSE}
+nrow(base_datos)
+ncol(base_datos)
+count(base_datos, renewal)
+count(base_datos, no_of_premiums_paid)
+# Estructura
+glimpse(base_datos)
+head(base_datos)
+summary(base_datos)
+base_datos %>% summarise_all(~ sum(is.na(.)))
+ggplot(base_datos, aes(x = "", y = Income)) + geom_boxplot(fill = "orange") + labs(tittle = "Boxplot de ingresos")
+
+```
+### SAMPLE - muestrita
+```{r message=FALSE, warning=FALSE}
+set.seed(53)
+muestrita <- base_datos %>% sample_frac(0.20)
+summary(muestrita)
+```
+
+### Relación entre edad e ingreso
+```{r message=FALSE, warning=FALSE}
+ggplot(base_datos, aes(x = age_in_days, y = Income)) +
+  geom_point(alpha = 0.3) +
+  labs(title = "Relación entre edad y ingreso")
+```
+### Gráfico de barras para variable categórica
+```{r message=FALSE, warning=FALSE}
+ggplot(base_datos, aes(x = sourcing_channel, fill = sourcing_channel)) +
+  geom_bar() +
+  labs(title = "Distribución por canal de origen") +
+  theme_minimal()
+```
+### Gráfico de barras para renovación
+```{r message=FALSE, warning=FALSE}
+ggplot(base_datos, aes(x = factor(renewal))) +
+  geom_bar(fill = "seagreen") +
+  labs(title = "Renovaciones (1 = Sí, 0 = No)",
+       x = "Renovación", y = "Cantidad")
+```
+
+
+## Tercera Fase | Modify o modificar
+
+```{r message=FALSE, warning=FALSE}
+datos_mod <- muestrita
+
+datos_mod <- datos_mod %>% select(-id)
+```
+### Convirtiendo edad en años
+```{r message=FALSE, warning=FALSE}
+datos_mod <- datos_mod %>%
+  mutate(age_years = round(age_in_days / 365, 1))
+datos_mod <- datos_mod %>% select(-age_in_days)
+```
+### Mostrando la muestra xD
+```{r message=FALSE, warning=FALSE}
+summary(datos_mod)
+glimpse(datos_mod)
+head(datos_mod)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

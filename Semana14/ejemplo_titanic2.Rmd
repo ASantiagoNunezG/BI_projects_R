@@ -1,0 +1,147 @@
+---
+title: "ejemplo_titanic2"
+author: "Laura"
+date: "2025-06-16"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Metodología SEMMA
+## Dataset Titanic
+```{r message=FALSE, warning=FALSE, rows.print=20}
+library(tidyverse)
+base_datos<-read_csv("titanic.csv")
+```
+## Exploración inicial
+### Contando los datos
+```{r message=FALSE, warning=FALSE}
+nrow(base_datos)
+ncol(base_datos)
+count(base_datos, Sex)
+count(base_datos, Survived)
+```
+### Explorando los datos
+
+```{r message=FALSE, warning=FALSE}
+summary(base_datos)
+glimpse(base_datos)
+str(base_datos)
+```
+### Valores nulos
+
+```{r message=FALSE, warning=FALSE}
+library(Amelia)
+is.na(base_datos)
+sum(is.na(base_datos))
+colSums(is.na(base_datos))
+missmap ( base_datos , col =  c ( "red" ,  "green" ) )
+```
+
+```{r message=FALSE, warning=FALSE}
+base_datos$Age[is.na(base_datos$Age)] <- mean(base_datos$Age, na.rm = TRUE)
+missmap ( base_datos , col =  c ( "red" ,  "green" ) )
+```
+### Selección de columnas
+
+```{r message=FALSE, warning=FALSE}
+datos_titanic <- base_datos %>%
+  select(Survived, Pclass, Sex, Age, SibSp, Parch, Fare)
+datos_titanic
+```
+
+## Separar la muestra
+### Muestreo Aleatorio
+```{r message=FALSE, warning=FALSE}
+set.seed(123)
+muestra_titanic <- sample_frac(datos_titanic, 0.3)
+nrow(muestra_titanic)
+
+```
+
+## Analisis exploratorio
+### Univariable - variables categoricas
+```{r message=FALSE, warning=FALSE}
+table(muestra_titanic$Sex)
+# Tabla de frecuencias
+tabla_sex <- table(muestra_titanic$Sex)
+
+# Gráfico de barras básico
+barplot(tabla_sex, col = c("lightpink","lightblue"), main = "Distribución por sexo", ylab = "Cantidad")
+```
+
+```{r}
+# Histograma edades
+hist(x = muestra_titanic$Age, main = "Histograma de Edad", 
+     xlab = "Edad", ylab = "Frecuencia",col = "lightgreen")
+
+```
+
+### Bivariable
+```{r}
+tabla_Sex_Surv<-table(muestra_titanic$Survived, muestra_titanic$Sex)
+tabla_Sex_Surv
+
+prop.table(tabla_Sex_Surv)
+
+prop.table(tabla_Sex_Surv,1) #Proporción por fila
+prop.table(tabla_Sex_Surv,2) #Proporción por columna
+
+barplot(tabla_Sex_Surv,
+        main ="Sobrevivientes por sexo",
+        xlab ="Sexo",
+        ylab="Cantidad",
+        col = c("honeydew","mistyrose"))
+
+legend("topleft",                       # Posición de la leyenda
+       legend = c("No sobrevivió", "Sobrevivió"),  # Etiquetas
+       fill = c("honeydew", "mistyrose"))          # Colores correspondientes
+```
+```{r}
+plot(x = muestra_titanic$Age, y = muestra_titanic$Fare, 
+     main ="Edad y precio del ticket",
+        xlab ="Edad",
+        ylab="Precio")
+```
+```{r}
+boxplot(formula = Age ~ Sex, data =  muestra_titanic,
+         main = "Distribución de edades por sexo",
+        xlab ="Sexo",
+        ylab="Edad")
+
+```
+```{r}
+tabla_Sex_Surv<-table(muestra_titanic$Survived, muestra_titanic$Sex)
+tabla_Sex_Surv
+mosaicplot(tabla_Sex_Surv,col=c("green", "yellow"), 
+           main="Sobrevivientes por sexo",
+           xlab="  0 No sobrevivientes - 1 Sobrevivientes",
+           ylab="Sexo")
+```
+```{r message=FALSE, warning=FALSE}
+
+muestra_titanic$Sex <- ifelse(muestra_titanic$Sex == "male", 1, 0)
+muestra_titanic
+cor_matrix <- round(cor(muestra_titanic),2)
+cor_matrix
+#Instalar paquete corrplot --> install.packages("corrplot")
+library(corrplot)
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.col = "black", tl.srt = 45)
+
+```
+
+```{r}
+muestra_titanic %>%
+  group_by(Survived) %>%
+  summarise(edad_promedio = mean(Age, na.rm = TRUE))
+muestra_titanic
+```
+

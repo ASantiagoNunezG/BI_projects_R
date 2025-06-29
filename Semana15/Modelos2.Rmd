@@ -1,0 +1,89 @@
+---
+title: "Modelos"
+author: "Laura"
+date: "2025-06-23"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Modelos 2
+
+## Regresión lineal múltiple
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+df_seguro<-read_csv("insurance.csv")
+# Ver cantidad de valores NA por columna
+colSums(is.na(df_seguro))
+```
+```{r message=FALSE, warning=FALSE}
+library(fastDummies)
+df_seguro_num <- dummy_cols(df_seguro, 
+                            select_columns = c("sex", "smoker", "region"), 
+                            remove_selected_columns = TRUE, 
+                            remove_first_dummy = TRUE)
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+library(corrplot)
+
+# Calcular la matriz de correlación
+cor_matrix <- cor(df_seguro_num)
+
+# Graficar
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.cex = 0.8, tl.col = "black", addCoef.col = "black")
+```
+
+```{r message=FALSE, warning=FALSE}
+set.seed(123)  # Para resultados reproducibles
+
+# Crear índices aleatorios para 70% entrenamiento
+indice_entrena <- sample(1:nrow(df_seguro_num), size = 0.7 * nrow(df_seguro_num))
+
+# Crear subconjuntos
+datos_entrena <- df_seguro_num[indice_entrena, ]
+datos_prueba  <- df_seguro_num[-indice_entrena, ]
+```
+```{r message=FALSE, warning=FALSE}
+# install.packages("randomForest")
+
+library(randomForest)
+
+# Entrenar el modelo con las variables seleccionadas
+modelo_rf <- randomForest(charges ~ age + bmi + smoker_yes + children + sex_male , data = datos_entrena)
+
+# Ver resumen del modelo
+print(modelo_rf)
+
+# Predicción en conjunto de prueba
+pred_rf <- predict(modelo_rf, newdata = datos_prueba)
+
+# Calcular RMSE (Error Cuadrático Medio)
+rmse <- sqrt(mean((datos_prueba$charges - pred_rf)^2))
+cat("RMSE:", rmse)
+
+# MAE (Error Absoluto Medio)
+mae <- mean(abs(datos_prueba$charges - pred_rf))
+cat("MAE:", mae)
+
+# Crear tabla de comparación
+tabla_comparacion <- data.frame(
+  Valor_Real = datos_prueba$charges,
+  Valor_Pronosticado = pred_rf
+)
+
+# Ver primeras filas de la tabla
+head(tabla_comparacion)
+```
+

@@ -1,0 +1,145 @@
+---
+title: "InsuranceCompanyNunez"
+author: "Nuñez"
+date: "2025-06-28"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Importando datos del dataset InsuranceCompany.csv
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+df<-read_csv("InsuranceCompany.csv")
+
+names(df) <- gsub("-", "_", names(df))
+nrow(df)
+
+ncol(df)
+
+head(df)
+
+summary(df)
+
+df %>% summarise_all(~ sum(is.na(.)))
+```
+##  Observando valores nulos
+```{r}
+df %>%
+  summarise_all(~sum(is.na(.))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "n_na") %>%
+  filter(n_na > 0) %>%
+  ggplot(aes(x = reorder(variable, -n_na), y = n_na)) +
+  geom_col(fill = "tomato") +
+  coord_flip() +
+  labs(title = "Cantidad de valores NA por variable", x = "", y = "NAs")
+```
+
+
+## Imputando valores nulos
+```{r message=FALSE, warning=FALSE}
+
+# Rellenar con 0 los valores faltantes de las variables de mora :D
+df$'Count_3_6_months_late'[is.na(df$'Count_3_6_months_late')] <- 0
+df$'Count_6_12_months_late'[is.na(df$'Count_6_12_months_late')] <- 0
+df$Count_more_than_12_months_late[is.na(df$Count_more_than_12_months_late)] <- 0
+
+# Imputar application_underwriting_score con la mediana, el KNN no me sirvio
+df$application_underwriting_score[is.na(df$application_underwriting_score)] <- 
+  median(df$application_underwriting_score, na.rm = TRUE)
+```
+## Resultados luego de imputar los datos
+```{r message=FALSE, warning=FALSE}
+#Viendo si quedaron nulos :D
+summary(df)
+```
+## Codificando variables
+```{r message=FALSE, warning=FALSE}
+# con factor codificando
+df$sourcing_channel_encoded <- as.integer(factor(df$sourcing_channel)) - 1
+df$residence_area_type_encoded <- as.integer(factor(df$residence_area_type)) - 1
+```
+## Resultados luego de codificar
+```{r message=FALSE, warning=FALSE}
+#Listos para la correlación quitando id y source_channel
+df <- df %>% select(-sourcing_channel, -id, -residence_area_type)
+summary(df)
+```
+
+## Correlación
+```{r message=FALSE, warning=FALSE, fig.width=12, fig.height=10}
+library(corrplot)
+
+# Calcular la matriz de correlación
+cor_matrix <- cor(df)
+
+# Graficar
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.cex = 0.8, tl.col = "black", addCoef.col = "black")
+```
+
+# Modelo
+## Separación de datos y evaluación
+```{r message=FALSE, warning=FALSE}
+# Cargar librerías necesarias
+library(randomForest)
+library(caret)
+library(pROC)
+
+# Asegurar que la variable objetivo sea factor para clasificación
+df$renewal <- as.factor(df$renewal)
+
+# Separación 70% entrenamiento, 30% prueba
+set.seed(123)
+n <- nrow(df)
+train_index <- sample(1:n, 0.7 * n)
+
+df_train <- df[train_index, ]
+df_test <- df[-train_index, ]
+
+# Entrenar modelo Random Forest
+modelo_rf <- randomForest(
+  renewal ~ ., 
+  data = df_train,
+  ntree = 100,
+  mtry = 3,
+  importance = TRUE
+)
+
+# Predicción de clases
+pred_rf <- predict(modelo_rf, df_test)
+
+# Calcular accuracy
+accuracy_rf <- mean(pred_rf == df_test$renewal)
+cat("Accuracy del modelo Random Forest:", round(accuracy_rf, 4), "\n\n")
+
+# Importancia de variables
+varImpPlot(modelo_rf, main = "Importancia de Variables")
+
+# Predicción de probabilidades para la curva ROC
+prob_rf <- predict(modelo_rf, df_test, type = "prob")[, 2]
+
+# Calcular y graficar curva ROC
+roc_rf <- roc(df_test$renewal, prob_rf)
+auc_rf <- auc(roc_rf)
+cat("AUC del modelo Random Forest:", round(auc_rf, 4), "\n\n")
+plot(roc_rf, col = "darkgreen", main = "Curva ROC - Random Forest", legacy.axes = TRUE)
+
+# Matriz de confusión profesional
+pred_rf <- factor(pred_rf, levels = c(0, 1))
+df_test$renewal <- factor(df_test$renewal, levels = c(0, 1))
+confusion <- confusionMatrix(pred_rf, df_test$renewal, positive = "1")
+print(confusion)
+
+```
+
+
+

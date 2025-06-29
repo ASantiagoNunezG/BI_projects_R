@@ -1,0 +1,142 @@
+---
+title: "BigMartSalesNunez"
+author: "Nuñez"
+date: "2025-06-28"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Importando datos del dataset BigMartSales.csv
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+df<-read_csv("BigMartSales.csv")
+names(df) <- gsub(" ", "_", names(df))
+names(df) <- make.names(names(df))
+nrow(df)
+
+ncol(df)
+
+head(df)
+
+summary(df)
+
+df %>% summarise_all(~ sum(is.na(.)))
+```
+##  Observando valores nulos
+```{r message=FALSE, warning=FALSE}
+df %>%
+  summarise_all(~sum(is.na(.))) %>%
+  pivot_longer(cols = everything(), names_to = "variable", values_to = "n_na") %>%
+  filter(n_na > 0) %>%
+  ggplot(aes(x = reorder(variable, -n_na), y = n_na)) +
+  geom_col(fill = "tomato") +
+  coord_flip() +
+  labs(title = "Cantidad de valores NA por variable", x = "", y = "NAs")
+```
+## Imputando valores nulos
+```{r message=FALSE, warning=FALSE}
+
+df$Item_Weight[is.na(df$Item_Weight)] <- median(df$Item_Weight, na.rm = TRUE)
+# Calcular la moda (valor más frecuente)
+moda_size <- names(sort(table(df$Outlet_Size), decreasing = TRUE))[1]
+
+# Imputar con la moda
+df$Outlet_Size[is.na(df$Outlet_Size)] <- moda_size
+```
+## Resultados luego de imputar los datos
+```{r message=FALSE, warning=FALSE}
+#Viendo si quedaron nulos :D
+summary(df)
+```
+
+## Codificando
+```{r message=FALSE, warning=FALSE}
+library(fastDummies)
+
+# Creamos variables dummies y eliminamos las originales
+df <- dummy_cols(df, 
+                 select_columns = c("Item_Fat_Content", "Item_Type", "Outlet_Identifier", 
+                                    "Outlet_Size", "Outlet_Location_Type", "Outlet_Type"), 
+                 remove_selected_columns = TRUE, 
+                 remove_first_dummy = TRUE)
+```
+
+## Resultados luego de imputar los dato y eliminar el Item_Identifier
+```{r message=FALSE, warning=FALSE}
+#Viendo si quedaron nulos :D
+# Eliminar ID innecesario
+df <- df %>% select(-Item_Identifier)
+summary(df)
+```
+## Correlación
+```{r message=FALSE, warning=FALSE, fig.width=16, fig.height=14}
+library(corrplot)
+
+# Calcular la matriz de correlación
+cor_matrix <- cor(df)
+
+# Graficar
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.cex = 0.8, tl.col = "black", addCoef.col = "black")
+```
+
+# Modelo, entrenamiento y métricas
+```{r message=FALSE, warning=FALSE}
+# Separar en entrenamiento y prueba
+set.seed(42)
+n <- nrow(df)
+train_index <- sample(1:n, 0.7 * n)
+
+df_train <- df[train_index, ]
+df_test <- df[-train_index, ]
+
+```
+## Modelo regresión lineal
+```{r message=FALSE, warning=FALSE}
+# Modelo de regresión lineal
+modelo_lm <- lm(Item_Outlet_Sales ~ ., data = df_train)
+
+# Predicción
+pred_lm <- predict(modelo_lm, df_test)
+
+# Métricas
+rmse_lm <- sqrt(mean((pred_lm - df_test$Item_Outlet_Sales)^2))
+r2_lm <- summary(modelo_lm)$r.squared
+
+cat("Regresión lineal - RMSE:", round(rmse_lm, 2), "\n")
+cat("Regresión lineal - R²:", round(r2_lm, 4), "\n")
+```
+## Otro modelo RandomForestRegresion
+```{r message=FALSE, warning=FALSE}
+library(randomForest)
+
+# Entrenar modelo Random Forest (regresión)
+modelo_rf <- randomForest(
+  x = df_train %>% select(-Item_Outlet_Sales),
+  y = df_train$Item_Outlet_Sales,
+  ntree = 100,
+  mtry = 5,
+  importance = TRUE
+)
+
+
+# Predicciones con Random Forest
+pred_rf <- predict(modelo_rf, df_test)
+
+rmse_rf <- sqrt(mean((pred_rf - df_test$Item_Outlet_Sales)^2))
+r2_rf <- cor(pred_rf, df_test$Item_Outlet_Sales)^2
+
+cat("Random Forest - RMSE: ", round(rmse_rf, 2), "\n")
+cat("Random Forest - R²: ", round(r2_rf, 4), "\n")
+```
+
+

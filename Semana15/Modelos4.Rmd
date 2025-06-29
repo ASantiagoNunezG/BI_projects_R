@@ -1,0 +1,86 @@
+---
+title: "Modelo 3"
+author: "Laura"
+date: "2025-06-27"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Modelos de clasificación
+## Regresión logística
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+df_diabetes<-read_csv("diabetes.csv")
+
+df_diabetes$label <- factor(df_diabetes$label, levels = c(0, 1))
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+set.seed(123)  
+
+# Crear índices para 70% entrenamiento
+indices_entrenamiento <- sample(1:nrow(df_diabetes), size = 0.7 * nrow(df_diabetes))
+
+# Separar los conjuntos
+train_data <- df_diabetes[indices_entrenamiento, ]
+test_data  <- df_diabetes[-indices_entrenamiento, ]
+```
+
+```{r message=FALSE, warning=FALSE}
+
+#install.packages("randomForest")
+library(randomForest)
+
+# Entrenar modelo (clasificación)
+modelo_rf <- randomForest(label ~ glucose + bmi + age,
+                          data = train_data,
+                          ntree = 100,
+                          mtry = 2,
+                          importance = TRUE)
+
+# Probabilidades para la clase 1
+prob_rf <- predict(modelo_rf, newdata = test_data, type = "prob")[, 2]
+
+# Predicción de clases con umbral 0.5
+pred_rf <- factor(ifelse(prob_rf > 0.5, 1, 0), levels = c(0, 1))
+
+# Calcular precisión (accuracy)
+accuracy_rf <- mean(pred_rf == test_data$label)
+cat("Accuracy del modelo Random Forest: ", round(accuracy_rf, 4), "\n")
+
+# install.packages("pROC")
+library(pROC)
+
+# Calcular curva ROC y AUC
+roc_rf <- roc(test_data$label, prob_rf)
+auc_rf <- auc(roc_rf)
+
+# Mostrar AUC
+cat("AUC del modelo Random Forest: ", round(auc_rf, 4), "\n")
+
+# Graficar la curva ROC
+plot(roc_rf, col = "darkgreen", main = "Curva ROC - Random Forest", legacy.axes = TRUE)
+
+
+library(caret)
+
+pred_rf <- factor(pred_rf, levels = c(0, 1))
+test_data$label <- factor(test_data$label, levels = c(0, 1))
+
+confusion <- confusionMatrix(pred_rf, test_data$label, positive = "1")
+
+print(confusion)
+
+```
+

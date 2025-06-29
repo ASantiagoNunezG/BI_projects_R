@@ -1,0 +1,121 @@
+---
+title: "Modelo 3"
+author: "Laura"
+date: "2025-06-27"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+# Modelos de clasificación
+## Regresión logística
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+df_diabetes<-read_csv("diabetes.csv")
+# Ver cantidad de valores NA por columna
+colSums(is.na(df_diabetes))
+```
+
+```{r message=FALSE, warning=FALSE}
+hist(x=df_diabetes$age, main="Histograma edad",
+     xlab="Edad", ylab="Frecuencia", col="blue")
+
+```
+```{r message=FALSE, warning=FALSE}
+# Seleccionar variables numéricas
+vars <- c("pregnant", "glucose", "bp", "skin", "insulin", "bmi", "pedigree", "age")
+
+# Convertir a formato largo
+diabetes_long <- df_diabetes %>% 
+  pivot_longer(cols = all_of(vars), names_to = "Variable", values_to = "Valor")
+
+# Crear histograma con facetas
+ggplot(diabetes_long, aes(x = Valor)) +
+  geom_histogram(bins = 30, fill = "skyblue", color = "black") +
+  facet_wrap(~ Variable, scales = "free") +
+  theme_minimal() +
+  labs(title = "Histogramas de variables numéricas")
+```
+
+```{r message=FALSE, warning=FALSE}
+library(corrplot)
+# Calcular la matriz de correlación Spearman 
+cor_matrix <- cor(df_diabetes, method = "spearman")
+
+# Visualizar la matriz con corrplot
+corrplot(cor_matrix, method = "color", type = "upper",
+         tl.col = "black", tl.srt = 45,
+         addCoef.col = "black", number.cex = 0.7)
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+library(corrplot)
+
+# Calcular la matriz de correlación
+cor_matrix <- cor(df_diabetes, method = "pearson" )
+
+# Graficar
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.cex = 0.8, tl.col = "black", addCoef.col = "black")
+```
+```{r}
+# Escalar las variables seleccionadas
+df_diabetes_scaled <- df_diabetes
+df_diabetes_scaled[, c("glucose", "bmi", "age")] <- scale(df_diabetes[, c("glucose", "bmi", "age")])
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+
+set.seed(123)
+
+# Separando entrenamiento y prueba
+indices_entrenamiento <- sample(1:nrow(df_diabetes_scaled), size = 0.7 * nrow(df_diabetes_scaled))
+
+train_data <- df_diabetes_scaled[indices_entrenamiento, ]
+test_data  <- df_diabetes_scaled[-indices_entrenamiento, ]
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+# Entrenar modelo de regresión logística
+modelo_glm <- glm(label ~ glucose + bmi + age,
+                  data = train_data,
+                  family = binomial)
+
+```
+
+```{r message=FALSE, warning=FALSE}
+# Predecir probabilidades con el modelo entrenado
+prob_pred <- predict(modelo_glm, newdata = test_data, type = "response")
+
+# Convertir probabilidades a clases (umbral 0.5)
+class_pred <- ifelse(prob_pred > 0.5, 1, 0)
+
+# Matriz de confusión
+table(Predicho = class_pred, Real = test_data$label)
+
+# install.packages("caret")  # si no lo tienes
+library(caret)
+
+confusionMatrix(factor(class_pred), factor(test_data$label))
+
+# install.packages("pROC")
+library(pROC)
+
+roc_obj <- roc(test_data$label, prob_pred)
+plot(roc_obj, col = "blue")
+auc(roc_obj)
+```
+

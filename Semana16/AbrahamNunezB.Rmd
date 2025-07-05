@@ -1,0 +1,95 @@
+---
+title: "LAB16-C24"
+author: "AbrahamNunez-B"
+date: "2025-07-05"
+output:   
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    collapsed: true
+    smooth_scroll: true
+    theme: journal
+    highlight: kate
+    df_print: paged
+    code_folding: show
+---
+
+# DAtos
+## Importando el dataset
+```{r message=FALSE, warning=FALSE}
+library(readr)
+
+datos <- read_csv("CreditScoring.csv")
+head(datos)
+```
+## Muestreo estratificado
+```{r message=FALSE, warning=FALSE}
+library(caret)
+
+set.seed(123)
+index <- createDataPartition(datos$SeriousDlqin2yrs, p = 0.7, list = FALSE)
+train_data <- datos[index, ]
+test_data <- datos[-index, ]
+```
+
+## Explorando los datos
+```{r message=FALSE, warning=FALSE}
+summary(train_data)
+str(train_data)
+library(ggplot2)
+library(corrplot)
+
+# Histograma
+ggplot(train_data, aes(x=age)) + geom_histogram(bins=30, fill="blue", color="white")
+
+# Correlación
+cor_matrix <- cor(train_data[, sapply(train_data, is.numeric)], use="complete.obs")
+corrplot(cor_matrix, method="color")
+```
+
+## Modificar los datos
+```{r message=FALSE, warning=FALSE}
+# Reemplazar NA con mediana
+train_data$MonthlyIncome[is.na(train_data$MonthlyIncome)] <- median(train_data$MonthlyIncome, na.rm=TRUE)
+train_data$NumberOfDependents[is.na(train_data$NumberOfDependents)] <- median(train_data$NumberOfDependents, na.rm=TRUE)
+# Normalización
+train_data_scaled <- scale(train_data[, -1])  # menos la variable objetivo
+
+```
+
+## Modelo
+```{r message=FALSE, warning=FALSE}
+modelo_log <- glm(SeriousDlqin2yrs ~ ., data=train_data, family="binomial")
+summary(modelo_log)
+
+library(rpart)
+
+modelo_arbol <- rpart(SeriousDlqin2yrs ~ ., data=train_data, method="class")
+plot(modelo_arbol)
+text(modelo_arbol)
+```
+## Evaluación
+```{r message=FALSE, warning=FALSE}
+# install.packages("pROC")
+library(pROC)
+
+# Evaluar regresión logística
+pred_log <- predict(modelo_log, newdata=test_data, type="response")
+roc_log <- roc(test_data$SeriousDlqin2yrs, pred_log)
+
+# Evaluar árbol
+pred_arbol <- predict(modelo_arbol, newdata=test_data, type="prob")[,2]
+roc_arbol <- roc(test_data$SeriousDlqin2yrs, pred_arbol)
+
+# Comparar AUC
+auc(roc_log)
+auc(roc_arbol)
+
+# Comparar gráficamente
+plot(roc_log, col="blue")
+plot(roc_arbol, col="red", add=TRUE)
+legend("bottomright", legend=c("Logística", "Árbol"), col=c("blue", "red"), lwd=2)
+
+```
+
